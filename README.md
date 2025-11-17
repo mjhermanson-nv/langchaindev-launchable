@@ -10,35 +10,15 @@ This launchable automatically:
 - Downloads and converts the LangChain NVIDIA NIM notebook from Jupyter to Marimo format
 - Configures Marimo to run as a systemd service
 
-## GPU Requirements
+## Deploy
 
-Since this notebook uses **NVIDIA NIM API endpoints** (inference microservices), the models run on NVIDIA's infrastructure rather than locally. However, GPU recommendations are provided for local processing workloads:
-
-### Minimum Requirements
-- **GPU**: Any GPU (API-based inference, local GPU optional)
-- **VRAM**: Not required for inference (handled by NVIDIA NIM API)
-- **Use Case**: Suitable for testing and development
-
-### Recommended Configuration
-- **GPU**: NVIDIA RTX 3060 or better
-- **VRAM**: 8GB+ VRAM
-- **Use Case**: Local embeddings processing, document parsing, and general ML workloads
-
-### Optimal Configuration
-- **GPU**: NVIDIA RTX 3090, A10G, or better
-- **VRAM**: 24GB+ VRAM
-- **Use Case**: Heavy local processing, multiple concurrent requests, production workloads
-
-### Notes
-- The notebook uses NVIDIA NIM API endpoints, so model inference happens on NVIDIA's infrastructure
-- Local GPU is beneficial for embeddings, document processing, and other computational tasks
-- For production deployments with high throughput, consider NVIDIA A100 or H100 GPUs
+[![ Click here to deploy.](https://brev-assets.s3.us-west-1.amazonaws.com/nv-lb-dark.svg)](https://brev.nvidia.com/launchable/deploy?launchableID=env-35cIYF1zpnEPrzNSK6RBmEs8GHQ)
 
 ## Setup Instructions
 
-### 1. Create a Brev Instance
+### 1. Deploy Instance
 
-Create a new Brev instance and select a GPU configuration based on your needs (see GPU Requirements above).
+Click the deploy badge above to launch your instance with the recommended GPU configuration.
 
 ### 2. Configure Environment Variables
 

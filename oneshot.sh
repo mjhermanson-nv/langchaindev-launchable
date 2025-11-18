@@ -91,7 +91,7 @@ fi
 HOME="/home/$USER"
 
 REPO_URL="${MARIMO_REPO_URL:-https://github.com/marimo-team/examples.git}"
-NOTEBOOKS_DIR="${MARIMO_NOTEBOOKS_DIR:-marimo-examples}"
+NOTEBOOKS_DIR="${MARIMO_NOTEBOOKS_DIR:-langchaindev-launchable}"
 NOTEBOOKS_COPIED=0
 
 (echo ""; echo "##### Detected Environment #####"; echo "";)
@@ -291,17 +291,17 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc" 2>/dev/null || tr
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc" 2>/dev/null || true
 export PATH="$HOME/.local/bin:$PATH"
 
-##### Clone notebooks if URL provided #####
-if [ -n "$REPO_URL" ]; then
+##### Clone notebooks if URL provided and directory doesn't exist #####
+if [ -n "$REPO_URL" ] && [ ! -d "$HOME/$NOTEBOOKS_DIR" ]; then
     (echo ""; echo "##### Cloning notebooks from $REPO_URL #####"; echo "";)
     cd "$HOME"
     git clone "$REPO_URL" "$NOTEBOOKS_DIR" 2>/dev/null || echo "Repository already exists"
-    
-    # Install dependencies if requirements.txt exists
-    if [ -f "$HOME/$NOTEBOOKS_DIR/requirements.txt" ]; then
-        (echo ""; echo "##### Installing additional dependencies from requirements.txt #####"; echo "";)
-        pip3 install -r "$HOME/$NOTEBOOKS_DIR/requirements.txt"
-    fi
+fi
+
+# Install dependencies if requirements.txt exists
+if [ -f "$HOME/$NOTEBOOKS_DIR/requirements.txt" ]; then
+    (echo ""; echo "##### Installing additional dependencies from requirements.txt #####"; echo "";)
+    pip3 install -r "$HOME/$NOTEBOOKS_DIR/requirements.txt"
 fi
 
 ##### Install PyTorch with CUDA support and common packages #####

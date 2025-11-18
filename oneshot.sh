@@ -98,6 +98,179 @@ NOTEBOOKS_COPIED=0
 (echo "User: $USER"; echo "";)
 (echo "Home: $HOME"; echo "";)
 
+##### Wrap CUDA detection in error handling to prevent bootstrap failure #####
+set +e  # Don't exit on errors during CUDA detection
+
+##### Check if CUDA runtime library exists #####
+if ls /usr/lib/x86_64-linux-gnu/libcudart.so* 2>/dev/null | grep -q .; then
+    CUDA_HOME_FOUND="/usr"
+    CUDA_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+    echo "✅ Found CUDA runtime library at: $CUDA_LIB_PATH"
+else
+    # Check common CUDA installation paths
+    CUDA_PATHS=(
+        "/usr/local/cuda"
+        "/usr/local/cuda-12.1"
+        "/usr/local/cuda-12.0"
+        "/usr/local/cuda-11.8"
+        "/opt/cuda"
+    )
+
+    for cuda_path in "${CUDA_PATHS[@]}"; do
+        if [ -d "$cuda_path" ] && [ -d "$cuda_path/lib64" ]; then
+            if ls "$cuda_path/lib64"/libcudart.so* 2>/dev/null | grep -q .; then
+                CUDA_HOME_FOUND="$cuda_path"
+                CUDA_LIB_PATH="$cuda_path/lib64"
+                echo "✅ Found CUDA installation at: $CUDA_HOME_FOUND"
+                break
+            fi
+        fi
+    done
+
+    # If still not found, try to install CUDA runtime library (non-blocking)
+    if [ -z "$CUDA_HOME_FOUND" ]; then
+        echo "⚠️  CUDA runtime library not found, attempting to install..."
+        sudo apt-get update -qq 2>&1 | grep -v "WARNING: apt does not have a stable CLI interface" || true
+        if sudo apt-get install -y libcudart11.0 2>&1 | grep -v "WARNING: apt does not have a stable CLI interface" | grep -q "Setting up"; then
+            CUDA_HOME_FOUND="/usr"
+            CUDA_LIB_PATH="/usr/lib/x86_64-linux-gnu"
+            echo "✅ Installed CUDA runtime library (libcudart11.0)"
+        else
+            echo "⚠️  Could not install CUDA runtime library automatically"
+            echo "   Notebooks use Triton backend which doesn't require CUDA runtime library"
+        fi
+    fi
+fi
+
+set -e  # Re-enable error exit
+
+##### Set CUDA environment variables if found #####
+if [ -n "$CUDA_HOME_FOUND" ]; then
+    export CUDA_HOME="$CUDA_HOME_FOUND"
+    export LD_LIBRARY_PATH="$CUDA_LIB_PATH:${LD_LIBRARY_PATH:-}"
+
+    # Add to shell config files for interactive use
+    if ! grep -q "CUDA_HOME" "$HOME/.bashrc" 2>/dev/null; then
+        echo "export CUDA_HOME=\"$CUDA_HOME_FOUND\"" >> "$HOME/.bashrc"
+        echo "export LD_LIBRARY_PATH=\"$CUDA_LIB_PATH:\$LD_LIBRARY_PATH\"" >> "$HOME/.bashrc"
+    fi
+    if ! grep -q "CUDA_HOME" "$HOME/.zshrc" 2>/dev/null; then
+        echo "export CUDA_HOME=\"$CUDA_HOME_FOUND\"" >> "$HOME/.zshrc"
+        echo "export LD_LIBRARY_PATH=\"$CUDA_LIB_PATH:\$LD_LIBRARY_PATH\"" >> "$HOME/.zshrc"
+    fi
+
+    echo "✅ CUDA environment variables configured"
+    echo "   CUDA_HOME=$CUDA_HOME"
+    echo "   LD_LIBRARY_PATH includes $CUDA_LIB_PATH"
+fi
+
+##### Check for CUDA compiler (nvcc) - optional since notebooks use Triton backend #####
+NVCC_PATH=""
+set +e  # Don't exit on errors
+
+if command -v nvcc &> /dev/null; then
+    NVCC_PATH=$(command -v nvcc)
+    echo "✅ CUDA compiler (nvcc) found: $NVCC_PATH"
+else
+    echo ""
+    echo "ℹ️  CUDA compiler (nvcc) not found"
+    echo "   Notebooks use Triton backend which doesn't require nvcc"
+    echo "   (Optional) Attempting to install CUDA development toolkit..."
+
+    # Try to install nvcc via nvidia-cuda-toolkit package (non-blocking)
+    sudo apt-get update -qq 2>&1 | grep -v "WARNING: apt does not have a stable CLI interface" || true
+    INSTALL_OUTPUT=$(sudo apt-get install -y nvidia-cuda-toolkit 2>&1)
+    INSTALL_EXIT=$?
+
+    if [ $INSTALL_EXIT -eq 0 ] && echo "$INSTALL_OUTPUT" | grep -q "Setting up"; then
+        # Installation succeeded - refresh PATH and check again
+        export PATH="/usr/local/cuda/bin:/usr/local/cuda-12.1/bin:/usr/local/cuda-12.0/bin:/usr/local/cuda-11.8/bin:$PATH"
+        if command -v nvcc &> /dev/null; then
+            NVCC_PATH=$(command -v nvcc)
+            echo "✅ Installed CUDA toolkit (nvcc available at: $NVCC_PATH)"
+        else
+            # Check common installation locations after apt install
+            for cuda_bin in /usr/local/cuda/bin/nvcc /usr/local/cuda-12.1/bin/nvcc /usr/local/cuda-12.0/bin/nvcc /usr/local/cuda-11.8/bin/nvcc /usr/bin/nvcc; do
+                if [ -f "$cuda_bin" ]; then
+                    NVCC_PATH="$cuda_bin"
+                    echo "✅ Found nvcc at: $NVCC_bin"
+                    break
+                fi
+            done
+        fi
+    else
+        echo "⚠️  Could not install CUDA toolkit automatically (this is optional)"
+        echo "   Checking for existing nvcc in common locations..."
+
+        # Check common installation locations even if apt install failed
+        for cuda_bin in /usr/local/cuda/bin/nvcc /usr/local/cuda-12.1/bin/nvcc /usr/local/cuda-12.0/bin/nvcc /usr/local/cuda-11.8/bin/nvcc; do
+            if [ -f "$cuda_bin" ]; then
+                NVCC_PATH="$cuda_bin"
+                echo "✅ Found nvcc at: $NVCC_PATH"
+                break
+            fi
+        done
+
+        # Try conda if available
+        if [ -z "$NVCC_PATH" ] && command -v conda &> /dev/null; then
+            echo "   Attempting to install via conda..."
+            if conda install -c nvidia -y cuda-toolkit 2>/dev/null; then
+                export PATH="$CONDA_PREFIX/bin:$PATH"
+                if command -v nvcc &> /dev/null; then
+                    NVCC_PATH=$(command -v nvcc)
+                    echo "✅ Installed CUDA toolkit via conda (nvcc available at: $NVCC_PATH)"
+                fi
+            fi
+        fi
+
+        if [ -z "$NVCC_PATH" ]; then
+            echo "ℹ️  nvcc not found (not required - notebooks use Triton backend)"
+            echo "   Options:"
+            echo "   1. Install manually: sudo apt-get install -y nvidia-cuda-toolkit"
+            echo "   2. Install via conda: conda install -c nvidia cuda-toolkit"
+            echo "   3. Download CUDA toolkit from: https://developer.nvidia.com/cuda-downloads"
+            echo "   4. Notebooks already use Triton backend (no action needed)"
+        fi
+    fi
+fi
+
+set -e  # Re-enable error exit
+
+##### Ensure nvcc is accessible at /usr/bin/nvcc (FlashInfer hardcodes this path) #####
+if [ -n "$NVCC_PATH" ] && [ -f "$NVCC_PATH" ]; then
+    NVCC_BIN_DIR=$(dirname "$NVCC_PATH")
+
+    # Add CUDA bin directory to PATH
+    export PATH="$NVCC_BIN_DIR:$PATH"
+
+    # Create symlink if nvcc is not at /usr/bin/nvcc
+    if [ "$NVCC_PATH" != "/usr/bin/nvcc" ]; then
+        echo "   Creating symlink: /usr/bin/nvcc -> $NVCC_PATH"
+        if sudo ln -sf "$NVCC_PATH" /usr/bin/nvcc 2>/dev/null; then
+            echo "   ✅ Symlink created successfully"
+        else
+            echo "   ⚠️  Failed to create symlink (may need manual creation)"
+        fi
+    else
+        echo "   ✅ nvcc already at /usr/bin/nvcc"
+    fi
+
+    # Verify symlink exists
+    if [ ! -f "/usr/bin/nvcc" ] && [ ! -L "/usr/bin/nvcc" ]; then
+        echo "   ⚠️  Warning: /usr/bin/nvcc still not accessible"
+    fi
+
+    # Update CUDA_HOME_FOUND to include bin directory for PATH
+    if [ -z "$CUDA_HOME_FOUND" ]; then
+        CUDA_HOME_FOUND=$(dirname "$NVCC_BIN_DIR")
+        if [ -d "$CUDA_HOME_FOUND/lib64" ]; then
+            CUDA_LIB_PATH="$CUDA_HOME_FOUND/lib64"
+        elif [ -d "$CUDA_HOME_FOUND/lib" ]; then
+            CUDA_LIB_PATH="$CUDA_HOME_FOUND/lib"
+        fi
+    fi
+fi
+
 ##### Install Python and pip if not available #####
 if ! command -v pip3 &> /dev/null; then
     (echo ""; echo "##### Installing Python and pip3 #####"; echo "";)
@@ -133,17 +306,25 @@ pip3 install --no-cache-dir torch torchvision torchaudio --index-url https://dow
 
 # Install common packages for marimo examples
 (echo ""; echo "##### Installing common packages for marimo examples #####"; echo "";)
+# Note: openai pinned to 2.6.1 for sglang compatibility, jsonschema>=4.0.0 for sglang
 pip3 install --no-cache-dir --upgrade \
     polars altair plotly pandas numpy scipy scikit-learn \
-    matplotlib seaborn pyarrow openai anthropic requests \
+    matplotlib seaborn pyarrow "openai==2.6.1" anthropic requests \
     beautifulsoup4 pillow 'marimo[sql]' duckdb sqlalchemy \
     instructor mohtml openai-whisper opencv-python python-dotenv \
     wigglystuff yt-dlp psutil pynvml GPUtil \
-    transformers networkx diffusers accelerate safetensors
+    transformers networkx diffusers accelerate safetensors \
+    "jsonschema>=4.0.0"
 
 # Optional: Install TensorRT-related packages if CUDA is available
 (echo ""; echo "##### Installing optional NVIDIA packages (TensorRT, etc.) #####"; echo "";)
-pip3 install --no-cache-dir --upgrade torch-tensorrt 2>/dev/null || echo "  torch-tensorrt not available (needs TensorRT installed)"
+# Suppress dependency conflict warnings (torch-tensorrt may have version constraints)
+set +o pipefail  # Temporarily disable pipefail to allow grep filtering
+pip3 install --no-cache-dir --upgrade torch-tensorrt 2>&1 | grep -v -E "WARNING: Error parsing dependencies|ERROR: pip's dependency resolver" || true; TENSORRT_EXIT=${PIPESTATUS[0]}
+set -o pipefail  # Re-enable pipefail
+if [ "${TENSORRT_EXIT:-0}" -ne 0 ]; then
+    echo "  torch-tensorrt not available (needs TensorRT installed or version conflict)"
+fi
 
 # Note: RAPIDS packages (cudf, cugraph) require conda installation
 # These are optional - notebooks will fall back to CPU equivalents if not available
@@ -211,6 +392,34 @@ fi
 
 ##### Create systemd service for Marimo #####
 (echo ""; echo "##### Setting up Marimo systemd service #####"; echo "";)
+
+# Build environment variables for systemd service
+SERVICE_ENV="Environment=\"PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin\"
+Environment=\"HOME=$HOME\"
+Environment=\"MARIMO_PORT=${MARIMO_PORT:-8080}\""
+
+# Add CUDA environment variables if CUDA was found
+if [ -n "$CUDA_HOME_FOUND" ]; then
+    # Determine CUDA bin directory
+    CUDA_BIN_DIR=""
+    if command -v nvcc &> /dev/null; then
+        NVCC_PATH=$(command -v nvcc)
+        CUDA_BIN_DIR=$(dirname "$NVCC_PATH")
+    elif [ -d "$CUDA_HOME_FOUND/bin" ]; then
+        CUDA_BIN_DIR="$CUDA_HOME_FOUND/bin"
+    fi
+
+    SERVICE_ENV="$SERVICE_ENV
+Environment=\"CUDA_HOME=$CUDA_HOME_FOUND\"
+Environment=\"LD_LIBRARY_PATH=$CUDA_LIB_PATH:\${LD_LIBRARY_PATH:-}\""
+
+    # Add CUDA bin to PATH if found
+    if [ -n "$CUDA_BIN_DIR" ]; then
+        SERVICE_ENV="$SERVICE_ENV
+Environment=\"PATH=$CUDA_BIN_DIR:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin\""
+    fi
+fi
+
 sudo tee /etc/systemd/system/marimo.service > /dev/null << EOF
 [Unit]
 Description=Marimo Notebook Server
@@ -220,10 +429,8 @@ After=network.target
 Type=simple
 User=$USER
 WorkingDirectory=$HOME/$NOTEBOOKS_DIR
-Environment="PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
-Environment="HOME=$HOME"
-Environment="MARIMO_PORT=${MARIMO_PORT:-8080}"
-ExecStart=/usr/local/bin/marimo edit --host 0.0.0.0 --port \${MARIMO_PORT} --headless --no-token
+$SERVICE_ENV
+ExecStart=$HOME/.local/bin/marimo edit --host 0.0.0.0 --port \${MARIMO_PORT} --headless --no-token
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -243,7 +450,8 @@ fi
 (echo ""; echo "##### Enabling and starting Marimo service #####"; echo "";)
 sudo systemctl daemon-reload
 sudo systemctl enable marimo.service 2>/dev/null || true
-sudo systemctl start marimo.service
+# Use restart to ensure service picks up new environment variables (including CUDA vars)
+sudo systemctl restart marimo.service 2>/dev/null || sudo systemctl start marimo.service
 
 # Wait for service to start
 sleep 2

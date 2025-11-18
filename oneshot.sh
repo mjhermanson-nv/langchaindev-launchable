@@ -280,7 +280,7 @@ fi
 
 ##### Install Marimo #####
 (echo ""; echo "##### Installing Marimo #####"; echo "";)
-pip3 install --upgrade marimo
+pip3 install --user --upgrade marimo
 
 ##### Add to PATH #####
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc" 2>/dev/null || true
@@ -471,7 +471,7 @@ fi
 (echo "  - Restart:       sudo systemctl restart marimo"; echo "";)
 (echo ""; echo "==============================================================="; echo "";)
 
-##### Install LangChain NVIDIA dependencies and convert notebook #####
+##### Install LangChain NVIDIA dependencies #####
 (echo ""; echo "##### Installing LangChain NVIDIA dependencies #####"; echo "";)
 pip3 install --no-cache-dir --upgrade \
     langchain-nvidia-ai-endpoints \
@@ -481,33 +481,35 @@ pip3 install --no-cache-dir --upgrade \
     tavily-python \
     lxml
 
-##### Download and convert LangChain NVIDIA NIM notebook #####
-(echo ""; echo "##### Downloading and converting LangChain NVIDIA NIM notebook #####"; echo "";)
-LANGCHAIN_NOTEBOOK_URL="https://raw.githubusercontent.com/langchain-ai/langchain-nvidia/main/cookbook/langgraph_rag_agent_llama3_nvidia_nim.ipynb"
-NOTEBOOK_TEMP="/tmp/langgraph_rag_agent_llama3_nvidia_nim.ipynb"
+##### Copy LangChain NVIDIA NIM notebook from repo #####
+(echo ""; echo "##### Copying LangChain NVIDIA NIM notebook from repository #####"; echo "";)
 MARIMO_NOTEBOOK_NAME="langgraph_rag_agent_llama3_nvidia_nim.py"
 
-# Download the notebook
-if curl -fsSL "$LANGCHAIN_NOTEBOOK_URL" -o "$NOTEBOOK_TEMP" 2>/dev/null; then
-    echo "  Downloaded notebook from LangChain repository"
+# Try to find the notebook in common locations
+NOTEBOOK_SOURCE=""
+# Check current directory (where script is executed from)
+if [ -f "./$MARIMO_NOTEBOOK_NAME" ]; then
+    NOTEBOOK_SOURCE="./$MARIMO_NOTEBOOK_NAME"
+# Check script directory
+elif [ -f "$(dirname "${BASH_SOURCE[0]}")/$MARIMO_NOTEBOOK_NAME" ]; then
+    NOTEBOOK_SOURCE="$(dirname "${BASH_SOURCE[0]}")/$MARIMO_NOTEBOOK_NAME"
+# Check home directory
+elif [ -f "$HOME/$MARIMO_NOTEBOOK_NAME" ]; then
+    NOTEBOOK_SOURCE="$HOME/$MARIMO_NOTEBOOK_NAME"
+fi
+
+# Ensure notebooks directory exists
+mkdir -p "$HOME/$NOTEBOOKS_DIR"
+
+# Copy the Marimo notebook from the repo if found
+if [ -n "$NOTEBOOK_SOURCE" ] && [ -f "$NOTEBOOK_SOURCE" ]; then
+    cp "$NOTEBOOK_SOURCE" "$HOME/$NOTEBOOKS_DIR/$MARIMO_NOTEBOOK_NAME"
+    echo "  [+] Copied notebook: $MARIMO_NOTEBOOK_NAME"
     
-    # Ensure notebooks directory exists
-    mkdir -p "$HOME/$NOTEBOOKS_DIR"
-    
-    # Convert notebook to Marimo format
-    if marimo convert "$NOTEBOOK_TEMP" -o "$HOME/$NOTEBOOKS_DIR/$MARIMO_NOTEBOOK_NAME" 2>/dev/null; then
-        echo "  [+] Converted notebook to Marimo format: $MARIMO_NOTEBOOK_NAME"
-        
-        # Fix ownership if running as root
-        if [ "$(id -u)" -eq 0 ] && [ -n "$USER" ]; then
-            chown "$USER:$USER" "$HOME/$NOTEBOOKS_DIR/$MARIMO_NOTEBOOK_NAME" 2>/dev/null || true
-        fi
-    else
-        echo "  Warning: Could not convert notebook to Marimo format"
+    # Fix ownership if running as root
+    if [ "$(id -u)" -eq 0 ] && [ -n "$USER" ]; then
+        chown "$USER:$USER" "$HOME/$NOTEBOOKS_DIR/$MARIMO_NOTEBOOK_NAME" 2>/dev/null || true
     fi
-    
-    # Clean up temporary file
-    rm -f "$NOTEBOOK_TEMP"
 else
-    echo "  Warning: Could not download notebook from LangChain repository"
+    echo "  Warning: Notebook $MARIMO_NOTEBOOK_NAME not found in repository"
 fi

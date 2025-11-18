@@ -101,6 +101,10 @@ NOTEBOOKS_COPIED=0
 ##### Wrap CUDA detection in error handling to prevent bootstrap failure #####
 set +e  # Don't exit on errors during CUDA detection
 
+# Initialize CUDA variables
+CUDA_HOME_FOUND=""
+CUDA_LIB_PATH=""
+
 ##### Check if CUDA runtime library exists #####
 if ls /usr/lib/x86_64-linux-gnu/libcudart.so* 2>/dev/null | grep -q .; then
     CUDA_HOME_FOUND="/usr"

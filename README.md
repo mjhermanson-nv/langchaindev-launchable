@@ -42,19 +42,11 @@ Click the deploy badge above for one-click deployment. Everything is automated:
 - Python and Marimo installation
 - All dependencies (LangChain, LangGraph, NVIDIA AI Endpoints, etc.)
 - Notebook setup and Marimo service configuration
+- Automatic launch of Marimo with the notebook ready to use
 
-### 2. Access Marimo
+### 2. Get API Keys
 
-Once deployment completes (usually 2-3 minutes), access Marimo at:
-```
-http://your-brev-instance-url:8080
-```
-
-The LangChain NVIDIA NIM notebook will be available in the workspace.
-
-### 3. Get API Keys
-
-You'll need two API keys, which the notebook will prompt you for:
+You'll need two API keys, which the notebook will automatically prompt you for when you run it:
 
 - **NVIDIA API Key**: Get yours from [NVIDIA API Catalog](https://build.nvidia.com/)
 - **Tavily API Key**: Get yours from [Tavily](https://tavily.com/) (for web search functionality)

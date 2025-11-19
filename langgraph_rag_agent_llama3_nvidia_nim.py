@@ -147,7 +147,7 @@ def _():
     docs_list = [item for sublist in _docs for item in sublist]
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(chunk_size=250, chunk_overlap=0)
     doc_splits = text_splitter.split_documents(docs_list)
-    vectorstore = InMemoryVectorStore.from_documents(documents=doc_splits, embedding=NVIDIAEmbeddings(model='NV-Embed-QA'))
+    vectorstore = InMemoryVectorStore.from_documents(documents=doc_splits, embedding=NVIDIAEmbeddings(model='nvidia/nv-embedqa-e5-v5'))
     # Add to vectorDB
     # Create retriever
     retriever = vectorstore.as_retriever(k=3)
@@ -259,7 +259,7 @@ def _(HumanMessage, llm, question, retriever):
     # Prompt
 
     def format_docs(docs):
-        return '\n\n'.join((doc.page_content for doc in _docs))
+        return '\n\n'.join((doc.page_content for doc in docs))
     _docs = retriever.invoke(question)
     docs_txt = format_docs(_docs)
     rag_prompt_formatted = rag_prompt.format(context=docs_txt, question=question)

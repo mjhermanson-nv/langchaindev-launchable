@@ -35,64 +35,31 @@ You'll see how to:
 
 ## Setup Instructions
 
-### 1. Deploy Instance
+### 1. Deploy
 
-Click the deploy badge above to launch your instance with the recommended GPU configuration.
+Click the deploy badge above for one-click deployment. Everything is automated:
+- GPU instance provisioning
+- Python and Marimo installation
+- All dependencies (LangChain, LangGraph, NVIDIA AI Endpoints, etc.)
+- Notebook setup and Marimo service configuration
 
-### 2. Configure Environment Variables
+### 2. Access Marimo
 
-Set the following environment variables in your Brev instance:
-
-- `MARIMO_PORT`: Port for Marimo server (default: 8080)
-- `MARIMO_REPO_URL`: Optional - URL to clone additional notebooks (default: marimo-team/examples)
-- `MARIMO_NOTEBOOKS_DIR`: Optional - Directory name for notebooks (default: marimo-examples)
-
-### 3. Run the Setup Script
-
-The `oneshot.sh` script will automatically:
-- Install Python and Marimo
-- Install all required dependencies (LangChain, LangGraph, NVIDIA AI Endpoints, etc.)
-- Copy the LangChain NVIDIA NIM notebook to the workspace
-- Set up Marimo as a systemd service
-
-### 4. Configure API Keys
-
-Before running the notebook, you'll need to set up API keys:
-
-#### NVIDIA API Key (Required)
-1. Get your NVIDIA API key from [NVIDIA API Catalog](https://build.nvidia.com/)
-2. Set it as an environment variable:
-   ```bash
-   export NVIDIA_API_KEY="your-api-key-here"
-   ```
-
-#### Tavily API Key (Required for web search)
-1. Get your Tavily API key from [Tavily](https://tavily.com/)
-2. Set it as an environment variable:
-   ```bash
-   export TAVILY_API_KEY="your-api-key-here"
-   ```
-
-You can add these to your `~/.bashrc` or `~/.zshrc` to persist across sessions:
-```bash
-echo 'export NVIDIA_API_KEY="your-api-key-here"' >> ~/.bashrc
-echo 'export TAVILY_API_KEY="your-api-key-here"' >> ~/.bashrc
-```
-
-### 5. Open Port on Brev
-
-Make sure to open the Marimo port (default: 8080) in your Brev instance settings:
-- Go to your Brev instance settings
-- Open port `8080/tcp` (or your custom `MARIMO_PORT`)
-
-### 6. Access Marimo
-
-Once the setup is complete, access Marimo at:
+Once deployment completes (usually 2-3 minutes), access Marimo at:
 ```
 http://your-brev-instance-url:8080
 ```
 
-The LangChain NVIDIA NIM notebook will be available in the notebooks directory.
+The LangChain NVIDIA NIM notebook will be available in the workspace.
+
+### 3. Get API Keys
+
+You'll need two API keys, which the notebook will prompt you for:
+
+- **NVIDIA API Key**: Get yours from [NVIDIA API Catalog](https://build.nvidia.com/)
+- **Tavily API Key**: Get yours from [Tavily](https://tavily.com/) (for web search functionality)
+
+The notebook will securely prompt you to enter these keys when you run the relevant cells. No need to set environment variables manually!
 
 ## Technical Stack
 
@@ -151,8 +118,9 @@ sudo journalctl -u marimo -n 50
 - Verify the file exists and has content
 
 ### API Key Issues
-- Ensure environment variables are set: `echo $NVIDIA_API_KEY`
-- Restart the Marimo service after setting environment variables: `sudo systemctl restart marimo`
+- The notebook will prompt you for API keys when needed
+- Make sure you have valid keys from [NVIDIA API Catalog](https://build.nvidia.com/) and [Tavily](https://tavily.com/)
+- Keys are entered securely in the notebook cells, not as environment variables
 
 ### Port Access Issues
 - Verify the port is open in Brev instance settings

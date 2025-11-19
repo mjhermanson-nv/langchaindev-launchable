@@ -1,14 +1,33 @@
 # LangChain NVIDIA NIM RAG Agent Launchable
 
-A Brev launchable that sets up Marimo with the LangChain NVIDIA NIM RAG Agent notebook. This notebook demonstrates how to build a Retrieval-Augmented Generation (RAG) agent using LangGraph, LangChain, and NVIDIA NIM inference microservices.
+Learn how to build production-ready RAG (Retrieval-Augmented Generation) agents using LangChain and NVIDIA NIM inference microservices. This notebook demonstrates advanced RAG techniques including adaptive routing, self-correction, and hallucination detection.
 
-## Overview
+## Why NVIDIA + LangChain?
 
-This launchable automatically:
-- Sets up Marimo notebook environment
-- Installs all required dependencies (LangChain, LangGraph, NVIDIA AI Endpoints, etc.)
-- Downloads and converts the LangChain NVIDIA NIM notebook from Jupyter to Marimo format
-- Configures Marimo to run as a systemd service
+**NVIDIA NIM** (NVIDIA Inference Microservices) provides optimized, production-ready AI models that integrate seamlessly with LangChain:
+
+- **High-Performance Inference**: Access to NVIDIA-optimized models like LLaMA 3.1 (8B, 70B, 405B) running on accelerated infrastructure
+- **Enterprise-Ready**: Deploy models on-premises or in the cloud with full control over your data and IP
+- **Seamless Integration**: Native LangChain integrations (`ChatNVIDIA`, `NVIDIAEmbeddings`) work just like other LangChain components
+- **State-of-the-Art Models**: Choose from a wide range of models optimized for different tasks (chat, embeddings, re-ranking)
+- **Production Scale**: Built for enterprise workloads with consistent APIs and containerized deployment
+
+## What You'll Learn
+
+This notebook walks you through building a sophisticated RAG agent that combines techniques from multiple research papers:
+
+- **Adaptive RAG**: Intelligently route queries to vectorstore or web search based on question type
+- **Corrective RAG**: Automatically fall back to web search when documents aren't relevant
+- **Self-RAG**: Self-correct hallucinations and ensure answers address the question
+- **Structured Output**: Use Pydantic models for reliable, type-safe LLM responses
+- **Tool Calling**: Leverage function calling capabilities for complex agent workflows
+
+You'll see how to:
+- Use NVIDIA's optimized embeddings (`NVIDIAEmbeddings`) for document indexing
+- Query NVIDIA-hosted LLaMA models (`ChatNVIDIA`) for generation
+- Build stateful agent workflows with LangGraph
+- Integrate web search (Tavily) for real-time information retrieval
+- Implement quality checks and hallucination detection
 
 ## Deploy
 
@@ -32,8 +51,8 @@ Set the following environment variables in your Brev instance:
 
 The `oneshot.sh` script will automatically:
 - Install Python and Marimo
-- Install all required dependencies
-- Download and convert the LangChain NVIDIA NIM notebook
+- Install all required dependencies (LangChain, LangGraph, NVIDIA AI Endpoints, etc.)
+- Copy the LangChain NVIDIA NIM notebook to the workspace
 - Set up Marimo as a systemd service
 
 ### 4. Configure API Keys
@@ -75,14 +94,14 @@ http://your-brev-instance-url:8080
 
 The LangChain NVIDIA NIM notebook will be available in the notebooks directory.
 
-## Notebook Features
+## Technical Stack
 
-The notebook demonstrates:
-- **RAG Agent**: Building a retrieval-augmented generation agent with LangGraph
-- **NVIDIA NIM Integration**: Using NVIDIA NIM inference microservices for LLM inference
-- **Web Search**: Integrating Tavily for real-time web search capabilities
-- **Document Processing**: Loading and processing documents for RAG
-- **Hallucination Detection**: Checking if generated content is grounded in retrieved documents
+The notebook showcases:
+- **LangGraph**: Build complex, stateful agent workflows with graph-based orchestration
+- **NVIDIA NIM Models**: Access to LLaMA 3.1 models (8B, 70B) and NVIDIA embeddings via API
+- **LangChain Integrations**: `ChatNVIDIA` and `NVIDIAEmbeddings` components that work seamlessly with the LangChain ecosystem
+- **Advanced RAG Patterns**: Implement research-backed techniques for production RAG systems
+- **Structured Outputs**: Use Pydantic models for reliable, validated LLM responses
 
 ## Useful Commands
 
@@ -128,8 +147,8 @@ sudo journalctl -u marimo -n 50
 ```
 
 ### Notebook not appearing
-- Check that the notebook was downloaded: `ls ~/marimo-examples/langgraph_rag_agent_llama3_nvidia_nim.py`
-- Verify conversion succeeded by checking the file exists and has content
+- Check that the notebook exists: `ls ~/langchaindev-launchable/langgraph_rag_agent_llama3_nvidia_nim.py`
+- Verify the file exists and has content
 
 ### API Key Issues
 - Ensure environment variables are set: `echo $NVIDIA_API_KEY`
